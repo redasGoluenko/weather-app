@@ -61,7 +61,6 @@
           >
 
           <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
-          <p>INDEX: {{ index }}</p>
             <p>Temperature: {{ f.main.temp }}°C</p>
             <p>Humidity: {{ f.main.humidity }}%</p>
             <p>Wind: {{ f.wind.speed }} m/s</p>
@@ -77,28 +76,7 @@
             </button>
           </div>
 
-          <!-- Pagination Controls -->
-          <nav class="pagination is-centered" role="navigation" aria-label="pagination" v-if="pageCount > 1">
-            <a
-              class="pagination-previous"
-              :disabled="currentPage === 1"
-              @click="currentPage--"
-            >Previous</a>
-            <a
-              class="pagination-next"
-              :disabled="currentPage === pageCount"
-              @click="currentPage++"
-            >Next</a>
-            <ul class="pagination-list">
-              <li v-for="page in pageCount" :key="page">
-                <a
-                  class="pagination-link"
-                  :class="{ 'is-current': currentPage === page }"
-                  @click="currentPage = page"
-                >{{ page }}</a>
-              </li>
-            </ul>
-          </nav>
+           <Pagination :page-count="pageCount" :current-page="currentPage" v-model:currentPage="currentPage"></Pagination>
         </div>
       </div>
     </div>
@@ -108,6 +86,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { getWeatherByCity, getWeatherByZip, getWeatherByCoords } from './API/WeatherApi'
+import Pagination from './components/Pagination.vue'
 
 const showModal = ref(false)
 const searchTerm = ref('')
@@ -217,4 +196,5 @@ watch([forecasts, currentPage], () => {
     currentPage.value = pageCount.value || 1
   }
 })
+
 </script>
