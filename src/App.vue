@@ -15,7 +15,7 @@
               class="input"
               type="text"
               v-model="searchTerm"
-              placeholder="Enter city name, ZIP, or coordinates"
+              placeholder="Enter city name, ZIP, or coordinates (lat,lon)"
             />
             <button class="button is-info mt-3" @click="searchWeather" :disabled="loading">
               <span v-if="loading">Searching...</span>
@@ -55,7 +55,7 @@
         </div>
         <div v-else>
           <div
-            v-for="(f, index) in forecasts"
+            v-for="(f, index) in paginatedForecasts"
             :key="f.id || index"
             class="box mb-3"
           >
@@ -74,6 +74,29 @@
               Remove
             </button>
           </div>
+
+          <!-- Pagination Controls -->
+          <nav class="pagination is-centered" role="navigation" aria-label="pagination" v-if="pageCount > 1">
+            <a
+              class="pagination-previous"
+              :disabled="currentPage === 1"
+              @click="currentPage--"
+            >Previous</a>
+            <a
+              class="pagination-next"
+              :disabled="currentPage === pageCount"
+              @click="currentPage++"
+            >Next</a>
+            <ul class="pagination-list">
+              <li v-for="page in pageCount" :key="page">
+                <a
+                  class="pagination-link"
+                  :class="{ 'is-current': currentPage === page }"
+                  @click="currentPage = page"
+                >{{ page }}</a>
+              </li>
+            </ul>
+          </nav>
         </div>
       </div>
     </div>
@@ -81,8 +104,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
-import { getWeatherByCity } from './API/WeatherApi'
+import { ref, watch, onMounted, computed } from 'vue'
+import { getWeatherByCity, getWeatherByZip, getWeatherByCoords } from './API/WeatherApi'
 
 const showModal = ref(false)
 const searchTerm = ref('')
@@ -90,6 +113,10 @@ const forecast = ref<any | null>(null)
 const loading = ref(false)
 const error = ref('')
 const forecasts = ref<any[]>([])
+
+// Pagination state
+const currentPage = ref(1)
+const pageSize = 10
 
 // Load saved forecasts from localStorage on start
 onMounted(() => {
@@ -111,6 +138,16 @@ function closeModal() {
   error.value = ''
 }
 
+function isCoordinates(input: string): boolean {
+  // Check if input is like: "lat,lon"
+  return /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(input.trim())
+}
+
+function isZipCode(input: string): boolean {
+  // Simple check: zip is 5 digits or digits + optional country code like "10001" or "10001,us"
+  return /^\d{5}(,\w{2})?$/.test(input.trim())
+}
+
 async function searchWeather() {
   if (!searchTerm.value.trim()) {
     error.value = 'Please enter a search term.'
@@ -121,9 +158,19 @@ async function searchWeather() {
   error.value = ''
   forecast.value = null
 
+  const input = searchTerm.value.trim()
+
   try {
-    const data = await getWeatherByCity(searchTerm.value)
-    forecast.value = data
+    if (isCoordinates(input)) {
+      const [latStr, lonStr] = input.split(',')
+      const lat = parseFloat(latStr)
+      const lon = parseFloat(lonStr)
+      forecast.value = await getWeatherByCoords(lat, lon)
+    } else if (isZipCode(input)) {
+      forecast.value = await getWeatherByZip(input)
+    } else {
+      forecast.value = await getWeatherByCity(input)
+    }
   } catch (err) {
     error.value = 'Failed to fetch weather data.'
   } finally {
@@ -143,12 +190,29 @@ function addForecast() {
   closeModal()
 }
 
+// Remove forecast by index
 function removeForecast(index: number) {
   forecasts.value.splice(index, 1)
 }
 
+// Format UNIX time to local time string
 function formatTime(unixTime: number): string {
   const date = new Date(unixTime * 1000)
   return date.toLocaleTimeString()
 }
+
+// Pagination: computed slice of forecasts
+const paginatedForecasts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return forecasts.value.slice(start, start + pageSize)
+})
+
+const pageCount = computed(() => Math.ceil(forecasts.value.length / pageSize))
+
+// Reset to page 1 if forecasts or currentPage changes in invalid way
+watch([forecasts, currentPage], () => {
+  if (currentPage.value > pageCount.value) {
+    currentPage.value = pageCount.value || 1
+  }
+})
 </script>
