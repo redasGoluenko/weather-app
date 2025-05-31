@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { GetWeatherByCity } from './API/WeatherApi'
+import { getWeatherByCity, getWeatherByZip, getWeatherByCoords } from './API/WeatherApi'
 
 const showModal = ref(false)
 const searchTerm = ref('')
@@ -69,9 +69,23 @@ function closeModal() {
   error.value = ''
 }
 
+function isZipCode(input: string): boolean {
+  // Simple check: all digits, length between 3 and 10 (adjust if needed)
+  return /^\d{3,10}$/.test(input.trim())
+}
+
+function isCoordinates(input: string): boolean {
+  // Check format: "lat,lon" where lat and lon are decimal numbers
+  const parts = input.split(',')
+  if (parts.length !== 2) return false
+  const lat = parseFloat(parts[0].trim())
+  const lon = parseFloat(parts[1].trim())
+  return !isNaN(lat) && !isNaN(lon)
+}
+
 async function searchWeather() {
   if (!searchTerm.value.trim()) {
-    error.value = 'Please enter a city name.'
+    error.value = 'Please enter a search term.'
     return
   }
 
@@ -80,8 +94,16 @@ async function searchWeather() {
   forecast.value = null
 
   try {
-    const data = await GetWeatherByCity(searchTerm.value)
-    forecast.value = data
+    if (isCoordinates(searchTerm.value)) {
+      const [latStr, lonStr] = searchTerm.value.split(',')
+      const lat = parseFloat(latStr.trim())
+      const lon = parseFloat(lonStr.trim())
+      forecast.value = await getWeatherByCoords(lat, lon)
+    } else if (isZipCode(searchTerm.value)) {
+      forecast.value = await getWeatherByZip(searchTerm.value.trim())
+    } else {
+      forecast.value = await getWeatherByCity(searchTerm.value.trim())
+    }
   } catch (err) {
     error.value = 'Failed to fetch weather data.'
   } finally {
@@ -93,4 +115,5 @@ function formatTime(unixTime: number): string {
   const date = new Date(unixTime * 1000)
   return date.toLocaleTimeString()
 }
+
 </script>
