@@ -1,30 +1,59 @@
-<script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
-  </div>
-  <HelloWorld msg="Vite + Vue" />
+  <section class="section">
+    <div class="container">   
+      <button class="button is-primary" @click="showModal = true">
+        Add Forecast
+      </button>
+      <div class="modal" :class="{ 'is-active': showModal }">
+        <div class="modal-background" @click="closeModal"></div>
+        <div class="modal-content">
+          <div class="box">
+            <input
+              class="input"
+              type="text"
+              v-model="searchTerm"
+              placeholder="Enter city, ZIP or coordinates"
+            />
+            <button class="button is-info mt-3" @click="searchWeather">
+              Search
+            </button>
+          </div>
+        </div>
+        <button
+          class="modal-close is-large"
+          aria-label="close"
+          @click="closeModal"
+        ></button>
+      </div>
+    </div>
+  </section>
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<script setup lang="ts">
+import { ref } from "vue";
+import { GetWeatherByCity } from "./API/WeatherApi";
+
+const showModal = ref(false);
+const searchTerm = ref("");
+
+function closeModal() {
+  showModal.value = false;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+async function searchWeather() {
+  if (!searchTerm.value.trim()) {
+    alert("Please enter a search term");
+    return;
+  }
+
+  try {
+    const data = await GetWeatherByCity(searchTerm.value);
+    console.log("Weather data:", data);
+    alert(`Weather in ${data.name}: ${data.main.temp}°C`);
+  } catch (error) {
+    alert("Failed to fetch weather data.");
+  }
+
+  closeModal();
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
-</style>
+</script>
