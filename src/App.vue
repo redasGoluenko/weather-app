@@ -59,7 +59,9 @@
             :key="f.id || index"
             class="box mb-3"
           >
-            <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
+
+          <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
+          <p>INDEX: {{ index }}</p>
             <p>Temperature: {{ f.main.temp }}°C</p>
             <p>Humidity: {{ f.main.humidity }}%</p>
             <p>Wind: {{ f.wind.speed }} m/s</p>
@@ -70,7 +72,7 @@
               :src="`https://openweathermap.org/img/wn/${f.weather[0].icon}@2x.png`"
               :alt="f.weather[0].description"
             />
-            <button class="button is-danger mt-2" @click="removeForecast(index)">
+            <button class="button is-danger mt-2" @click="removeForecast(f.id)">
               Remove
             </button>
           </div>
@@ -191,8 +193,8 @@ function addForecast() {
 }
 
 // Remove forecast by index
-function removeForecast(index: number) {
-  forecasts.value.splice(index, 1)
+function removeForecast(id: number) {
+  forecasts.value = forecasts.value.filter(f => f.id !== id)
 }
 
 // Format UNIX time to local time string
