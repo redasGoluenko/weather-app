@@ -1,26 +1,20 @@
 <template>
-  <!-- Filter Bar -->
-  <div class="field mt-4">
-    <label class="label">Filter Forecasts</label>
-    <div class="control">
-      <input
-        class="input"
-        type="text"
-        v-model="filterText"
-        placeholder="Search by city or country"
-      />
-    </div>
+<!-- Filter Bar -->
+<div class="field mt-4">
+  <label class="label">Filter Forecasts</label>
+  <div class="control">
+    <input
+      class="input"
+      type="text"
+      v-model="filterText"
+      placeholder="Search by city or country"
+    />
   </div>
+</div>
+
 
   <section class="section">
     <div class="container">
-
-      <!-- Notification -->
-      <div v-if="notification" class="notification is-success">
-        <button class="delete" @click="notification = ''"></button>
-        {{ notification }}
-      </div>
-
       <!-- Add Forecast button -->
       <button class="button is-primary" @click="showModal = true">
         Add Forecast
@@ -79,7 +73,8 @@
             :key="f.id || index"
             class="box mb-3"
           >
-            <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
+
+          <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
             <p>Temperature: {{ f.main.temp }}°C</p>
             <p>Humidity: {{ f.main.humidity }}%</p>
             <p>Wind: {{ f.wind.speed }} m/s</p>
@@ -95,7 +90,7 @@
             </button>
           </div>
 
-          <Pagination :page-count="pageCount" v-model:currentPage="currentPage"></Pagination>
+           <Pagination :page-count="pageCount" v-model:currentPage="currentPage"></Pagination>
         </div>
       </div>
     </div>
@@ -103,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, computed, onUnmounted } from 'vue'
 import { getWeatherByCity, getWeatherByZip, getWeatherByCoords } from './API/WeatherApi'
 import Pagination from './components/Pagination.vue'
 
@@ -117,9 +112,14 @@ const forecasts = ref<any[]>([])
 // Filter text
 const filterText = ref('')
 
-// Notification message and timeout handler
+// Pagination
+const currentPage = ref(1)
+const pageSize = 10
+
+
 const notification = ref('')
 let timeoutId: number | null = null
+
 function showNotification(msg: string) {
   notification.value = msg
   if (timeoutId) clearTimeout(timeoutId)
@@ -129,16 +129,13 @@ function showNotification(msg: string) {
   }, 3000)
 }
 
-// Pagination
-const currentPage = ref(1)
-const pageSize = 10
-
 // Load saved forecasts from localStorage on start
 onMounted(() => {
   const saved = localStorage.getItem('forecasts')
   if (saved) {
     forecasts.value = JSON.parse(saved)
   }
+  startAutoRefresh()
 })
 
 // Save forecasts to localStorage whenever they change
@@ -194,16 +191,12 @@ function addForecast() {
   const exists = forecasts.value.some(f => f.id === forecast.value.id)
   if (!exists) {
     forecasts.value.push(forecast.value)
-    showNotification('Forecast added successfully!')
-  } else {
-    showNotification('Forecast already added.')
   }
   closeModal()
 }
 
 function removeForecast(id: number) {
   forecasts.value = forecasts.value.filter(f => f.id !== id)
-  showNotification('Forecast removed.')
 }
 
 function formatTime(unixTime: number): string {
@@ -231,4 +224,39 @@ watch([filteredForecasts, currentPage], () => {
     currentPage.value = pageCount.value || 1
   }
 })
+
+// --- Periodic refresh logic ---
+let refreshIntervalId: number | null = null
+const REFRESH_INTERVAL = 10 * 60 * 1000 // 10 minutes
+
+async function refreshForecasts() {
+  if (forecasts.value.length === 0) return
+  try {
+    const updatedForecasts = await Promise.all(
+      forecasts.value.map(async (f) => {
+        try {
+          // Refresh by city name (you could switch to id if preferred)
+          const updated = await getWeatherByCity(f.name)
+          return updated
+        } catch {
+          // On error, return old forecast
+          return f
+        }
+      })
+    )
+    forecasts.value = updatedForecasts
+    showNotification('Forecasts refreshed.')
+  } catch {
+    // Fail silently or optionally show notification
+  }
+}
+
+function startAutoRefresh() {
+  refreshIntervalId = window.setInterval(refreshForecasts, REFRESH_INTERVAL)
+}
+
+onUnmounted(() => {
+  if (refreshIntervalId) clearInterval(refreshIntervalId)
+})
 </script>
+
