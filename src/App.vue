@@ -1,4 +1,18 @@
 <template>
+<!-- Filter Bar -->
+<div class="field mt-4">
+  <label class="label">Filter Forecasts</label>
+  <div class="control">
+    <input
+      class="input"
+      type="text"
+      v-model="filterText"
+      placeholder="Search by city or country"
+    />
+  </div>
+</div>
+
+
   <section class="section">
     <div class="container">
       <!-- Add Forecast button -->
@@ -95,7 +109,10 @@ const loading = ref(false)
 const error = ref('')
 const forecasts = ref<any[]>([])
 
-// Pagination state
+// Filter text
+const filterText = ref('')
+
+// Pagination
 const currentPage = ref(1)
 const pageSize = 10
 
@@ -120,12 +137,10 @@ function closeModal() {
 }
 
 function isCoordinates(input: string): boolean {
-  // Check if input is like: "lat,lon"
   return /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(input.trim())
 }
 
 function isZipCode(input: string): boolean {
-  // Simple check: zip is 5 digits or digits + optional country code like "10001" or "10001,us"
   return /^\d{5}(,\w{2})?$/.test(input.trim())
 }
 
@@ -144,9 +159,7 @@ async function searchWeather() {
   try {
     if (isCoordinates(input)) {
       const [latStr, lonStr] = input.split(',')
-      const lat = parseFloat(latStr)
-      const lon = parseFloat(lonStr)
-      forecast.value = await getWeatherByCoords(lat, lon)
+      forecast.value = await getWeatherByCoords(parseFloat(latStr), parseFloat(lonStr))
     } else if (isZipCode(input)) {
       forecast.value = await getWeatherByZip(input)
     } else {
@@ -161,40 +174,41 @@ async function searchWeather() {
 
 function addForecast() {
   if (!forecast.value) return
-
-  // Avoid duplicates by city id (or any unique key)
   const exists = forecasts.value.some(f => f.id === forecast.value.id)
   if (!exists) {
     forecasts.value.push(forecast.value)
   }
-
   closeModal()
 }
 
-// Remove forecast by index
 function removeForecast(id: number) {
   forecasts.value = forecasts.value.filter(f => f.id !== id)
 }
 
-// Format UNIX time to local time string
 function formatTime(unixTime: number): string {
-  const date = new Date(unixTime * 1000)
-  return date.toLocaleTimeString()
+  return new Date(unixTime * 1000).toLocaleTimeString()
 }
 
-// Pagination: computed slice of forecasts
-const paginatedForecasts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return forecasts.value.slice(start, start + pageSize)
+// Filtered + paginated forecasts
+const filteredForecasts = computed(() => {
+  const term = filterText.value.trim().toLowerCase()
+  if (!term) return forecasts.value
+  return forecasts.value.filter(f =>
+    f.name.toLowerCase().includes(term) || f.sys.country.toLowerCase().includes(term)
+  )
 })
 
-const pageCount = computed(() => Math.ceil(forecasts.value.length / pageSize))
+const paginatedForecasts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredForecasts.value.slice(start, start + pageSize)
+})
 
-// Reset to page 1 if forecasts or currentPage changes in invalid way
-watch([forecasts, currentPage], () => {
+const pageCount = computed(() => Math.ceil(filteredForecasts.value.length / pageSize))
+
+watch([filteredForecasts, currentPage], () => {
   if (currentPage.value > pageCount.value) {
     currentPage.value = pageCount.value || 1
   }
 })
-
 </script>
+
