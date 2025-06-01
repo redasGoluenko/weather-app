@@ -1,20 +1,26 @@
 <template>
-<!-- Filter Bar -->
-<div class="field mt-4">
-  <label class="label">Filter Forecasts</label>
-  <div class="control">
-    <input
-      class="input"
-      type="text"
-      v-model="filterText"
-      placeholder="Search by city or country"
-    />
+  <!-- Filter Bar -->
+  <div class="field mt-4">
+    <label class="label">Filter Forecasts</label>
+    <div class="control">
+      <input
+        class="input"
+        type="text"
+        v-model="filterText"
+        placeholder="Search by city or country"
+      />
+    </div>
   </div>
-</div>
-
 
   <section class="section">
     <div class="container">
+
+      <!-- Notification -->
+      <div v-if="notification" class="notification is-success">
+        <button class="delete" @click="notification = ''"></button>
+        {{ notification }}
+      </div>
+
       <!-- Add Forecast button -->
       <button class="button is-primary" @click="showModal = true">
         Add Forecast
@@ -73,8 +79,7 @@
             :key="f.id || index"
             class="box mb-3"
           >
-
-          <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
+            <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
             <p>Temperature: {{ f.main.temp }}°C</p>
             <p>Humidity: {{ f.main.humidity }}%</p>
             <p>Wind: {{ f.wind.speed }} m/s</p>
@@ -90,7 +95,7 @@
             </button>
           </div>
 
-           <Pagination :page-count="pageCount" v-model:currentPage="currentPage"></Pagination>
+          <Pagination :page-count="pageCount" v-model:currentPage="currentPage"></Pagination>
         </div>
       </div>
     </div>
@@ -111,6 +116,18 @@ const forecasts = ref<any[]>([])
 
 // Filter text
 const filterText = ref('')
+
+// Notification message and timeout handler
+const notification = ref('')
+let timeoutId: number | null = null
+function showNotification(msg: string) {
+  notification.value = msg
+  if (timeoutId) clearTimeout(timeoutId)
+  timeoutId = window.setTimeout(() => {
+    notification.value = ''
+    timeoutId = null
+  }, 3000)
+}
 
 // Pagination
 const currentPage = ref(1)
@@ -177,12 +194,16 @@ function addForecast() {
   const exists = forecasts.value.some(f => f.id === forecast.value.id)
   if (!exists) {
     forecasts.value.push(forecast.value)
+    showNotification('Forecast added successfully!')
+  } else {
+    showNotification('Forecast already added.')
   }
   closeModal()
 }
 
 function removeForecast(id: number) {
   forecasts.value = forecasts.value.filter(f => f.id !== id)
+  showNotification('Forecast removed.')
 }
 
 function formatTime(unixTime: number): string {
@@ -211,4 +232,3 @@ watch([filteredForecasts, currentPage], () => {
   }
 })
 </script>
-
