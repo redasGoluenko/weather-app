@@ -1,28 +1,30 @@
 <script setup lang="ts">
-import { computed, defineProps, defineEmits } from 'vue'
+import { defineProps, defineEmits } from 'vue'
 
-const props = defineProps({
-  pageCount: Number,
-  currentPage: Number,
-})
+const props = defineProps<{
+  pageCount: number
+  currentPage: number
+}>()
 
-const emit = defineEmits(['update:currentPage'])
-
+const emit = defineEmits<{
+  (event: 'update:currentPage', page: number): void
+}>()
 
 const prevPage = () => {
-console.log('prevPage called', props.currentPage, props.pageCount)
+  console.log('prevPage called', props.currentPage, props.pageCount)
   if (props.currentPage > 1) {
     emit('update:currentPage', props.currentPage - 1)
   }
 }
 
 const nextPage = () => {
-    console.log('nextPage called', props.currentPage, props.pageCount)
+  console.log('nextPage called', props.currentPage, props.pageCount)
   if (props.currentPage < props.pageCount) {
     emit('update:currentPage', props.currentPage + 1)
   }
 }
 </script>
+
 <template>
           <nav class="pagination is-centered" role="navigation" aria-label="pagination" v-if="pageCount > 1">
             <a

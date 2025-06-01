@@ -76,7 +76,7 @@
             </button>
           </div>
 
-           <Pagination :page-count="pageCount" :current-page="currentPage" v-model:currentPage="currentPage"></Pagination>
+           <Pagination :page-count="pageCount" v-model:currentPage="currentPage"></Pagination>
         </div>
       </div>
     </div>
