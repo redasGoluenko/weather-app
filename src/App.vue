@@ -1,17 +1,21 @@
 <template>
-<!-- Filter Bar -->
-<div class="field mt-4">
-  <label class="label">Filter Forecasts</label>
-  <div class="control">
-    <input
-      class="input"
-      type="text"
-      v-model="filterText"
-      placeholder="Search by city or country"
-    />
+  <!-- Notification -->
+  <div v-if="notification" class="notification is-info" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000;">
+    {{ notification }}
   </div>
-</div>
 
+  <!-- Filter Bar -->
+  <div class="field mt-4">
+    <label class="label">Filter Forecasts</label>
+    <div class="control">
+      <input
+        class="input"
+        type="text"
+        v-model="filterText"
+        placeholder="Search by city or country"
+      />
+    </div>
+  </div>
 
   <section class="section">
     <div class="container">
@@ -73,8 +77,7 @@
             :key="f.id || index"
             class="box mb-3"
           >
-
-          <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
+            <p><strong>{{ f.name }}, {{ f.sys.country }}</strong></p>
             <p>Temperature: {{ f.main.temp }}°C</p>
             <p>Humidity: {{ f.main.humidity }}%</p>
             <p>Wind: {{ f.wind.speed }} m/s</p>
@@ -90,7 +93,7 @@
             </button>
           </div>
 
-           <Pagination :page-count="pageCount" v-model:currentPage="currentPage"></Pagination>
+          <Pagination :page-count="pageCount" v-model:currentPage="currentPage"></Pagination>
         </div>
       </div>
     </div>
@@ -116,7 +119,7 @@ const filterText = ref('')
 const currentPage = ref(1)
 const pageSize = 10
 
-
+// Notification message and timeout
 const notification = ref('')
 let timeoutId: number | null = null
 
@@ -191,12 +194,16 @@ function addForecast() {
   const exists = forecasts.value.some(f => f.id === forecast.value.id)
   if (!exists) {
     forecasts.value.push(forecast.value)
+    showNotification('Forecast added.')
+  } else {
+    showNotification('Forecast already exists.')
   }
   closeModal()
 }
 
 function removeForecast(id: number) {
   forecasts.value = forecasts.value.filter(f => f.id !== id)
+  showNotification('Forecast removed.')
 }
 
 function formatTime(unixTime: number): string {
@@ -235,11 +242,9 @@ async function refreshForecasts() {
     const updatedForecasts = await Promise.all(
       forecasts.value.map(async (f) => {
         try {
-          // Refresh by city name (you could switch to id if preferred)
           const updated = await getWeatherByCity(f.name)
           return updated
-        } catch {
-          // On error, return old forecast
+        } catch {       
           return f
         }
       })
@@ -247,7 +252,6 @@ async function refreshForecasts() {
     forecasts.value = updatedForecasts
     showNotification('Forecasts refreshed.')
   } catch {
-    // Fail silently or optionally show notification
   }
 }
 
@@ -259,4 +263,3 @@ onUnmounted(() => {
   if (refreshIntervalId) clearInterval(refreshIntervalId)
 })
 </script>
-
